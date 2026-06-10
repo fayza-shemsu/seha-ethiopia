@@ -1,2 +1,7 @@
-# seha-ethiopia
-AI-powered healthcare document processing for Ethiopia
+# SEHA — AI Healthcare Assistant for Ethiopia
+
+An AI-powered healthcare assistant built for Ethiopia.
+
+## Team
+- Fayza — AI & Backend Lead
+- Selam — Full-Stack & Data Lead
