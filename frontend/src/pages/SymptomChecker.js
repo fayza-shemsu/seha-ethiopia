@@ -94,7 +94,7 @@ function SymptomChecker() {
   const hasEmergency = results?.predictions?.some(p => p.triage === 'EMERGENCY');
 
   return (
-    <div style={{ maxWidth: '720px', margin: '0 auto', padding: '32px 20px' }}>
+    <div style={{ maxWidth: '720px', margin: '0 auto', padding: '24px 16px' }}>
 
       {/* Header */}
       <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#15803d', marginBottom: '4px' }}>
