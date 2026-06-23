@@ -1,0 +1,16 @@
+{
+    "model_accuracy": 100.0,
+    "top_features": [
+        "muscle_pain",
+        "yellowing_of_eyes",
+        "nausea",
+        "itching",
+        "dark_urine",
+        "fatigue",
+        "diarrhoea",
+        "family_history",
+        "chest_pain",
+        "vomiting"
+    ],
+    "fairness_flags": []
+}
