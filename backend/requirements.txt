@@ -3,3 +3,5 @@ uvicorn
 python-dotenv
 azure-storage-blob
 openai
+
+azure-ai-documentintelligence
