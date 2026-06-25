@@ -67,6 +67,7 @@ Return ONLY valid JSON, no markdown, no explanation.
     )
 
     raw = response.choices[0].message.content.strip()
+    raw = raw.replace("```json", "").replace("```", "").strip()
     try:
         parsed = json.loads(raw)
     except Exception:
