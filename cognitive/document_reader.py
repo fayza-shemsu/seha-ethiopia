@@ -1,21 +1,20 @@
 import os
 import json
+from azure.ai.documentintelligence import DocumentIntelligenceClient
+from azure.core.credentials import AzureKeyCredential
 from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
 
+doc_client = DocumentIntelligenceClient(
+    endpoint=os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT"),
+    credential=AzureKeyCredential(os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY"))
+)
+
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 def analyze_document(blob_url: str) -> dict:
-    from azure.ai.documentintelligence import DocumentIntelligenceClient
-    from azure.core.credentials import AzureKeyCredential
-
-    doc_client = DocumentIntelligenceClient(
-        endpoint=os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT"),
-        credential=AzureKeyCredential(os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY"))
-    )
-
     poller = doc_client.begin_analyze_document(
         model_id="prebuilt-layout",
         body={"urlSource": blob_url}
@@ -42,6 +41,11 @@ def analyze_document(blob_url: str) -> dict:
 
     pages_analyzed = len(result.pages)
 
+    print(f"Extracted {len(full_text)} characters from {pages_analyzed} pages")
+    print(f"Found {len(tables)} tables")
+    print("\nFirst 500 chars:")
+    print(full_text[:500])
+
     prompt = f"""
 You are a medical document analyst for Ethiopian healthcare.
 Analyze this medical document and return a JSON object with:
@@ -63,6 +67,7 @@ Return ONLY valid JSON, no markdown, no explanation.
     )
 
     raw = response.choices[0].message.content.strip()
+    raw = raw.replace("```json", "").replace("```", "").strip()
     try:
         parsed = json.loads(raw)
     except Exception:
