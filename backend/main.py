@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import symptom, documents, prescription, assistant
+from backend.routes import symptom, documents, prescription, assistant
 
 app = FastAPI(
     title="SEHA API",
