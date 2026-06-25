@@ -72,6 +72,8 @@ def get_explanation(disease: str, triage: str) -> str:
 # PREDICT FUNCTION
 # ============================================================
 def predict(symptoms: list) -> dict:
+    if not symptoms:
+        return {"error": "No symptoms provided. Please select at least one symptom.", "predictions": []}
     input_row = {col: 0 for col in FEATURE_COLUMNS}
     for symptom in symptoms:
         key = symptom.strip().lower().replace(" ", "_")
