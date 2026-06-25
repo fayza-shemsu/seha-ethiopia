@@ -2,18 +2,14 @@ import os
 import json
 import time
 import requests
+from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
 
-def read_prescription(image_url: str) -> dict:
-    from openai import AzureOpenAI
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-    openai_client = AzureOpenAI(
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_key=os.getenv("AZURE_OPENAI_KEY"),
-        api_version="2024-02-01"
-    )
+def read_prescription(image_url: str) -> dict:
 
     VISION_ENDPOINT = os.getenv("AZURE_VISION_ENDPOINT")
     VISION_KEY = os.getenv("AZURE_VISION_KEY")
@@ -52,8 +48,8 @@ Prescription text:
 Return ONLY valid JSON. No markdown.
 """
 
-    parse_response = openai_client.chat.completions.create(
-        model="gpt-4o",
+    parse_response = groq_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": parse_prompt}],
         max_tokens=300
     )

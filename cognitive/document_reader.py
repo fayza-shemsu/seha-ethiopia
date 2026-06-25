@@ -1,22 +1,19 @@
 import os
 import json
+from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
 
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
 def analyze_document(blob_url: str) -> dict:
     from azure.ai.documentintelligence import DocumentIntelligenceClient
     from azure.core.credentials import AzureKeyCredential
-    from openai import AzureOpenAI
 
     doc_client = DocumentIntelligenceClient(
         endpoint=os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT"),
         credential=AzureKeyCredential(os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY"))
-    )
-    openai_client = AzureOpenAI(
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_key=os.getenv("AZURE_OPENAI_KEY"),
-        api_version="2024-02-01"
     )
 
     poller = doc_client.begin_analyze_document(
@@ -59,8 +56,8 @@ Document text:
 Return ONLY valid JSON, no markdown, no explanation.
 """
 
-    response = openai_client.chat.completions.create(
-        model="gpt-4o",
+    response = groq_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=800
     )
