@@ -12,7 +12,7 @@ except ImportError as e:
     upload_to_blob = None
     analyze_document = None
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+router = APIRouter()
 
 @router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):

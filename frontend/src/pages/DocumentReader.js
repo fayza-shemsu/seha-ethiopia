@@ -237,6 +237,45 @@ function DocumentReader() {
             </div>
           )}
 
+          {result.tables?.length > 0 && (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', background: 'white', padding: '20px' }}>
+              <h2 style={{ fontWeight: '700', color: '#374151', marginBottom: '12px', fontSize: '1rem' }}>
+                📊 Tables ({result.tables.length})
+              </h2>
+              {result.tables.map((table, ti) => (
+                <div key={ti} style={{ overflowX: 'auto', marginBottom: ti < result.tables.length - 1 ? '16px' : 0 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <tbody>
+                      {table.map((row, ri) => (
+                        <tr key={ri} style={{ background: ri === 0 ? '#f0fdf4' : 'white' }}>
+                          {row.map((cell, ci) => (
+                            <td
+                              key={ci}
+                              style={{
+                                border: '1px solid #e5e7eb',
+                                padding: '8px 10px',
+                                color: '#374151',
+                                fontWeight: ri === 0 ? '600' : 'normal',
+                              }}
+                            >
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {result.pages_analyzed > 0 && (
+            <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', margin: 0 }}>
+              Analyzed {result.pages_analyzed} page{result.pages_analyzed > 1 ? 's' : ''}
+            </p>
+          )}
+
           {/* Ask question about this document */}
           {result && (
             <div style={{ marginTop: '24px' }}>
