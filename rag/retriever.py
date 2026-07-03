@@ -2,7 +2,7 @@ import os
 import json
 import numpy as np
 from dotenv import load_dotenv
-from rag.indexer import load_index, embed_text
+from indexer import load_index, embed_text
 
 load_dotenv()
 

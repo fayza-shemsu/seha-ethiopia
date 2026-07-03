@@ -2,7 +2,7 @@ import os
 import json
 from openai import AzureOpenAI
 from dotenv import load_dotenv
-from rag.retriever import retrieve
+from retriever import retrieve
 
 load_dotenv()
 
