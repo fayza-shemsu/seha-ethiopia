@@ -1,10 +1,11 @@
 import os
 import sys
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../rag"))
-from ask_seha_agent import ask_seha
+from ask_seha_agent import ask_seha, ask_seha_stream
 
 router = APIRouter()
 
@@ -25,3 +26,16 @@ def query_seha(data: AskInput):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"SEHA agent error: {str(e)}")
+
+@router.post("/stream")
+def stream_seha(data: AskInput):
+    if not data.question or len(data.question.strip()) < 3:
+        raise HTTPException(status_code=400, detail="Question is too short.")
+    try:
+        return StreamingResponse(
+            ask_seha_stream(data.question, data.language),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"SEHA stream error: {str(e)}")
