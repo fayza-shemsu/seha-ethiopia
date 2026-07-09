@@ -5,6 +5,7 @@ from azure.search.documents.models import VectorizedQuery
 from azure.core.credentials import AzureKeyCredential
 from openai import AzureOpenAI
 from dotenv import load_dotenv
+from rag.indexer import load_index, embed_text
 
 load_dotenv()
 

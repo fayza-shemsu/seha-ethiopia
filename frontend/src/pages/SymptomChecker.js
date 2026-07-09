@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { checkSymptoms } from '../api';
-import LoadingSpinner from '../components/LoadingSpinner';
-import ErrorMessage from '../components/ErrorMessage';
 
 const SYMPTOMS = [
   'itching', 'skin_rash', 'nodal_skin_eruptions', 'continuous_sneezing',

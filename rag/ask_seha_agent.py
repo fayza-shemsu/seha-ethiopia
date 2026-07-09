@@ -1,3 +1,5 @@
+
+import json
 import os
 from openai import AzureOpenAI
 from dotenv import load_dotenv
@@ -41,15 +43,13 @@ Use ONLY the context provided. If context is insufficient, say "Based on general
 - If question is not health-related → politely redirect to health topics"""
 
 def ask_seha(question: str, language: str = "en") -> dict:
-    # Step 1 — Retrieve relevant context
-    context_chunks = retrieve(question, top_k=5)
-
+    context_chunks = retrieve(question, top_k=4)
     if context_chunks:
         context_text = "\n\n".join([
             f"[Source: {c['source']}, Chunk {c['chunk_id']}]\n{c['text']}"
             for c in context_chunks
         ])
-        sources = list(set(c["source"] for c in context_chunks))
+        sources = list(dict.fromkeys(c["source"] for c in context_chunks))
     else:
         context_text = "No specific guideline found."
         sources = []
@@ -57,16 +57,21 @@ def ask_seha(question: str, language: str = "en") -> dict:
     if language == "am":
         lang_note = "The user is asking in Amharic. Respond entirely in Amharic."
     else:
-        lang_note = "Respond in English."
+        lang_instruction = "Answer in English. Be clear and simple."
 
-    user_prompt = f"""{lang_note}
+    system_prompt = f"""You are SEHA, an AI health assistant for Ethiopia.
+You answer questions based on Ethiopian Ministry of Health guidelines and WHO recommendations.
+Always be accurate, compassionate, and clear.
+If you are unsure, say so and recommend seeing a doctor.
+{lang_instruction}
+Always end your answer with:
+⚠️ This is for information only. Please consult a healthcare provider for personal medical advice."""
 
-Context from MoH guidelines:
+    user_prompt = f"""Context from medical guidelines:
 {context_text}
 
 Question: {question}
-
-Answer based on the context. Cite which document you used."""
+Answer based on the context above. If the context doesn't cover the question, use your general medical knowledge but say so."""
 
     response = chat_client.chat.completions.create(
         model=CHAT_DEPLOYMENT,
@@ -84,6 +89,5 @@ Answer based on the context. Cite which document you used."""
         "answer": answer,
         "language": language,
         "sources": sources,
-        "context_used": len(context_chunks) > 0,
-        "disclaimer": "⚠️ This is for information only. Please consult a healthcare provider for personal medical advice."
+        "context_used": len(context_chunks) > 0
     }

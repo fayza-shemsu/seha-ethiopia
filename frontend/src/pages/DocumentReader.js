@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { uploadDocument } from '../api';
+import { uploadToBlob, uploadDocument, askSeha } from '../api';
 
 const ACCEPTED_TYPES = {
   'application/pdf': ['.pdf'],
@@ -12,19 +12,25 @@ function DocumentReader() {
   const [fileUrl, setFileUrl] = useState('');
   const [droppedFile, setDroppedFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState(null);
-  const [result, setResult]   = useState(null);
+  const [error, setError] = useState(null);
+  const [result, setResult] = useState(null);
+  
+  // For asking questions about the document
+  const [question, setQuestion] = useState('');
+  const [askingDoc, setAskingDoc] = useState(false);
+  const [docAnswer, setDocAnswer] = useState(null);
 
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
     setError(null);
     setResult(null);
+    setDocAnswer(null);
     if (rejectedFiles.length > 0) {
       setError('That file type is not supported. Please upload a PDF, JPG, or PNG.');
       return;
     }
     if (acceptedFiles.length > 0) {
       setDroppedFile(acceptedFiles[0]);
-      setFileUrl('');
+      setFileUrl(''); // Clear URL when file is dropped
     }
   }, []);
 
@@ -39,25 +45,51 @@ function DocumentReader() {
       setError('Please drop a file or enter a document URL.');
       return;
     }
+
     setError(null);
     setResult(null);
+    setDocAnswer(null);
     setLoading(true);
+
     try {
-      // NOTE: dropped files need to be uploaded to blob storage first to get a URL.
-      // That wiring happens in Day 15 (Azure Blob integration).
-      // For now, the URL field is fully functional end-to-end.
-      const targetUrl = fileUrl.trim();
-      if (!targetUrl) {
-        setError('File upload to cloud storage is coming in Day 15. For now, please paste a document URL.');
-        setLoading(false);
-        return;
+      let targetUrl = fileUrl.trim();
+
+      // If user dropped a file → upload to Azure Blob first
+      if (droppedFile) {
+        const uploadRes = await uploadToBlob(droppedFile);
+        targetUrl = uploadRes.data.url;
+        console.log("✅ Uploaded to Blob:", targetUrl);
       }
+
+      if (!targetUrl) {
+        throw new Error("No valid document URL available");
+      }
+
       const res = await uploadDocument(targetUrl);
       setResult(res.data);
-    } catch {
-      setError('Could not analyze the document. Please check the URL and try again.');
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || 'Could not analyze the document. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAskAboutDoc = async () => {
+    if (!question.trim() || !result) return;
+
+    setAskingDoc(true);
+    setDocAnswer(null);
+
+    try {
+      const contextualQuestion = `Based on this document: "${result.summary || 'No summary available'}". Question: ${question}`;
+      const res = await askSeha(contextualQuestion, 'en');
+      setDocAnswer(res.data.answer || res.data);
+    } catch (err) {
+      console.error(err);
+      setDocAnswer('Could not get an answer right now. Please try again.');
+    } finally {
+      setAskingDoc(false);
     }
   };
 
@@ -105,7 +137,7 @@ function DocumentReader() {
         )}
       </div>
 
-      {/* Divider */}
+      {/* OR Divider */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}>
         <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
         <span style={{ color: '#9ca3af', fontSize: '0.8rem' }}>OR</span>
@@ -115,9 +147,12 @@ function DocumentReader() {
       {/* URL input */}
       <input
         type="text"
-        placeholder="Enter document URL"
+        placeholder="Enter document URL (optional if file is dropped)"
         value={fileUrl}
-        onChange={e => { setFileUrl(e.target.value); setDroppedFile(null); }}
+        onChange={e => { 
+          setFileUrl(e.target.value); 
+          setDroppedFile(null); 
+        }}
         style={{
           width: '100%', padding: '12px 14px', borderRadius: '8px',
           border: '1px solid #d1d5db', fontSize: '0.95rem',
@@ -144,7 +179,7 @@ function DocumentReader() {
           cursor: loading ? 'not-allowed' : 'pointer', marginBottom: '24px'
         }}
       >
-        {loading ? 'Analyzing...' : 'Analyze Document'}
+        {loading ? 'Analyzing Document...' : 'Analyze Document'}
       </button>
 
       {loading && (
@@ -202,7 +237,81 @@ function DocumentReader() {
             </div>
           )}
 
-          <p style={{ fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center' }}>
+          {result.tables?.length > 0 && (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', background: 'white', padding: '20px' }}>
+              <h2 style={{ fontWeight: '700', color: '#374151', marginBottom: '12px', fontSize: '1rem' }}>
+                📊 Tables ({result.tables.length})
+              </h2>
+              {result.tables.map((table, ti) => (
+                <div key={ti} style={{ overflowX: 'auto', marginBottom: ti < result.tables.length - 1 ? '16px' : 0 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <tbody>
+                      {table.map((row, ri) => (
+                        <tr key={ri} style={{ background: ri === 0 ? '#f0fdf4' : 'white' }}>
+                          {row.map((cell, ci) => (
+                            <td
+                              key={ci}
+                              style={{
+                                border: '1px solid #e5e7eb',
+                                padding: '8px 10px',
+                                color: '#374151',
+                                fontWeight: ri === 0 ? '600' : 'normal',
+                              }}
+                            >
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {result.pages_analyzed > 0 && (
+            <p style={{ fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center', margin: 0 }}>
+              Analyzed {result.pages_analyzed} page{result.pages_analyzed > 1 ? 's' : ''}
+            </p>
+          )}
+
+          {/* Ask question about this document */}
+          {result && (
+            <div style={{ marginTop: '24px' }}>
+              <h3 style={{ marginBottom: '8px' }}>Ask a question about this document:</h3>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder="e.g. What is the main diagnosis?"
+                  style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                />
+                <button
+                  onClick={handleAskAboutDoc}
+                  disabled={askingDoc || !question.trim()}
+                  style={{
+                    padding: '12px 20px',
+                    background: '#15803d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: askingDoc ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {askingDoc ? 'Asking...' : 'Ask'}
+                </button>
+              </div>
+              {docAnswer && (
+                <div style={{ marginTop: '12px', padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #d1fae5' }}>
+                  <strong>Answer:</strong> {docAnswer}
+                </div>
+              )}
+            </div>
+          )}
+
+          <p style={{ fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center', marginTop: '16px' }}>
             ⚠️ For informational use only. Always consult a licensed healthcare provider.
           </p>
         </div>
