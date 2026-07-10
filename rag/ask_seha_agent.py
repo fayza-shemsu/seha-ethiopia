@@ -1,4 +1,3 @@
-
 import json
 import os
 from openai import AzureOpenAI
@@ -14,6 +13,7 @@ chat_client = AzureOpenAI(
 )
 
 CHAT_DEPLOYMENT = os.getenv("AZURE_CHAT_DEPLOYMENT", "o4-mini")
+DISCLAIMER = "⚠️ This is for information only. Please consult a healthcare provider for personal medical advice."
 
 SYSTEM_PROMPT = """## Identity
 You are SEHA, an AI health assistant built for Ethiopia. You help patients and healthcare workers understand health information clearly and compassionately.
@@ -42,8 +42,10 @@ Use ONLY the context provided. If context is insufficient, say "Based on general
 - If question is dangerous or emergency → immediately say "Call emergency services or go to nearest hospital NOW"
 - If question is not health-related → politely redirect to health topics"""
 
-def ask_seha(question: str, language: str = "en") -> dict:
-    context_chunks = retrieve(question, top_k=4)
+
+def _build_prompts(question: str, language: str = "en"):
+    context_chunks = retrieve(question, top_k=5)
+
     if context_chunks:
         context_text = "\n\n".join([
             f"[Source: {c['source']}, Chunk {c['chunk_id']}]\n{c['text']}"
@@ -57,26 +59,27 @@ def ask_seha(question: str, language: str = "en") -> dict:
     if language == "am":
         lang_note = "The user is asking in Amharic. Respond entirely in Amharic."
     else:
-        lang_instruction = "Answer in English. Be clear and simple."
+        lang_note = "Respond in English."
 
-    system_prompt = f"""You are SEHA, an AI health assistant for Ethiopia.
-You answer questions based on Ethiopian Ministry of Health guidelines and WHO recommendations.
-Always be accurate, compassionate, and clear.
-If you are unsure, say so and recommend seeing a doctor.
-{lang_instruction}
-Always end your answer with:
-⚠️ This is for information only. Please consult a healthcare provider for personal medical advice."""
+    user_prompt = f"""{lang_note}
 
-    user_prompt = f"""Context from medical guidelines:
+Context from MoH guidelines:
 {context_text}
 
 Question: {question}
-Answer based on the context above. If the context doesn't cover the question, use your general medical knowledge but say so."""
+
+Answer based ONLY on the context above. For each point you make, mention which source document it came from. If the context does not cover the question, say so explicitly."""
+
+    return SYSTEM_PROMPT, user_prompt, sources, len(context_chunks) > 0
+
+
+def ask_seha(question: str, language: str = "en") -> dict:
+    system_prompt, user_prompt, sources, context_used = _build_prompts(question, language)
 
     response = chat_client.chat.completions.create(
         model=CHAT_DEPLOYMENT,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
         ],
         max_completion_tokens=5000
@@ -89,5 +92,29 @@ Answer based on the context above. If the context doesn't cover the question, us
         "answer": answer,
         "language": language,
         "sources": sources,
-        "context_used": len(context_chunks) > 0
+        "context_used": context_used,
+        "disclaimer": DISCLAIMER
     }
+
+
+def ask_seha_stream(question: str, language: str = "en"):
+    system_prompt, user_prompt, sources, context_used = _build_prompts(question, language)
+
+    yield f"data: {json.dumps({'type': 'meta', 'sources': sources, 'context_used': context_used, 'disclaimer': DISCLAIMER})}\n\n"
+
+    stream = chat_client.chat.completions.create(
+        model=CHAT_DEPLOYMENT,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        max_completion_tokens=5000,
+        stream=True,
+    )
+
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content if chunk.choices else None
+        if delta:
+            yield f"data: {json.dumps({'type': 'token', 'content': delta})}\n\n"
+
+    yield f"data: {json.dumps({'type': 'done'})}\n\n"
