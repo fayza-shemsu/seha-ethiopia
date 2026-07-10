@@ -1,14 +1,26 @@
 import sys
 import os
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Security, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyHeader
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from backend.routes import symptom, documents, prescription, assistant
+
+# ============================================================
+# API KEY AUTH
+# ============================================================
+API_KEY = os.getenv("SEHA_API_KEY", "seha-dev-key-2026")
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    if api_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid or missing API key")
+    return api_key
 
 # ============================================================
 # RATE LIMITER
@@ -33,7 +45,7 @@ app.add_middleware(
 )
 
 # ============================================================
-# TOKEN BUDGET (simple in-memory session tracker)
+# TOKEN BUDGET
 # ============================================================
 session_token_usage = {}
 MAX_TOKENS_PER_SESSION = 5000
@@ -41,7 +53,7 @@ MAX_TOKENS_PER_SESSION = 5000
 @app.middleware("http")
 async def token_budget_middleware(request: Request, call_next):
     session_id = request.headers.get("X-Session-ID", get_remote_address(request))
-    
+
     if request.url.path in ["/ask/query", "/ask/stream"]:
         current_usage = session_token_usage.get(session_id, 0)
         if current_usage >= MAX_TOKENS_PER_SESSION:
@@ -49,15 +61,17 @@ async def token_budget_middleware(request: Request, call_next):
                 status_code=429,
                 content={"error": "Session limit reached. Please start a new session."}
             )
-    
+
     response = await call_next(request)
-    
-    # Approximate token usage (rough estimate)
+
     if request.url.path in ["/ask/query", "/ask/stream"]:
         session_token_usage[session_id] = session_token_usage.get(session_id, 0) + 600
-    
+
     return response
 
+# ============================================================
+# ROUTES
+# ============================================================
 app.include_router(symptom.router, prefix="/symptoms", tags=["Symptoms"])
 app.include_router(documents.router, prefix="/documents", tags=["Documents"])
 app.include_router(prescription.router, prefix="/prescription", tags=["Prescription"])
