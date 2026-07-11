@@ -63,3 +63,4 @@ An AI-powered healthcare assistant built for Ethiopia.
 - Backend API (Live): https://seha-backend-api-arfebudqh9cjewa0.southafricanorth-01.azurewebsites.net
 - Frontend: Pending deployment by Selam
 - REACT_APP_API_URL for Selam: https://seha-backend-api-arfebudqh9cjewa0.southafricanorth-01.azurewebsites.net
+# SEHA CI/CD verified Sat, Jul 11, 2026  8:45:02 PM
