@@ -54,3 +54,7 @@ An AI-powered healthcare assistant built for Ethiopia.
 - Token budget: 5,000 tokens per session
 - All secrets in .env (never committed to GitHub)
 - Azure Blob Storage: private container
+
+## Live URLs
+- **Backend API**: https://seha-backend-api-arfebudqh9cjewa0.southafricanorth-01.azurewebsites.net
+- **Swagger UI**: https://seha-backend-api-arfebudqh9cjewa0.southafricanorth-01.azurewebsites.net/docs
