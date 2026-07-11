@@ -58,3 +58,8 @@ An AI-powered healthcare assistant built for Ethiopia.
 ## Live URLs
 - **Backend API**: https://seha-backend-api-arfebudqh9cjewa0.southafricanorth-01.azurewebsites.net
 - **Swagger UI**: https://seha-backend-api-arfebudqh9cjewa0.southafricanorth-01.azurewebsites.net/docs
+
+## Deployment
+- Backend API (Live): https://seha-backend-api-arfebudqh9cjewa0.southafricanorth-01.azurewebsites.net
+- Frontend: Pending deployment by Selam
+- REACT_APP_API_URL for Selam: https://seha-backend-api-arfebudqh9cjewa0.southafricanorth-01.azurewebsites.net
